@@ -23,7 +23,7 @@ func executeParallelWithCheck(tasks []ExecTask, profile bool, check PropertyChec
 			return result, interruptCtx.Err()
 		}
 
-		res := pe.resultQueue.Pop().(ExecResult)
+		res := pe.resultQueue.Pop()
 
 		result, err = pe.Step(&res)
 

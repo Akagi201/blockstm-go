@@ -1,8 +1,8 @@
 package blockstm
 
 import (
-	"container/heap"
-	"sync"
+	"github.com/JustinTimperio/gpq"
+	"github.com/JustinTimperio/gpq/schema"
 )
 
 type IntHeap []int
@@ -26,69 +26,65 @@ func (h *IntHeap) Pop() any {
 	return x
 }
 
-type SafeQueue interface {
-	Push(v int, d interface{})
-	Pop() interface{}
-	Len() int
+type SafeQueue[d any] interface {
+	Push(v int64, data d)
+	Pop() d
+	Len() uint64
 }
 
-type SafeFIFOQueue struct {
-	c chan interface{}
+type SafeFIFOQueue[d any] struct {
+	c chan d
 }
 
-func NewSafeFIFOQueue(capacity int) *SafeFIFOQueue {
-	return &SafeFIFOQueue{
-		c: make(chan interface{}, capacity),
+func NewSafeFIFOQueue[d any](capacity int) *SafeFIFOQueue[d] {
+	return &SafeFIFOQueue[d]{
+		c: make(chan d, capacity),
 	}
 }
 
-func (q *SafeFIFOQueue) Push(v int, d interface{}) {
-	q.c <- d
+func (q *SafeFIFOQueue[d]) Push(v int64, data d) {
+	q.c <- data
 }
 
-func (q *SafeFIFOQueue) Pop() interface{} {
+func (q *SafeFIFOQueue[d]) Pop() d {
 	return <-q.c
 }
 
-func (q *SafeFIFOQueue) Len() int {
-	return len(q.c)
+func (q *SafeFIFOQueue[d]) Len() uint64 {
+	return uint64(len(q.c))
 }
 
-// A thread safe priority queue
-type SafePriorityQueue struct {
-	m     sync.Mutex
-	queue *IntHeap
-	data  map[int]interface{}
+type SafePriorityQueue[d any] struct {
+	queue *gpq.GPQ[d]
 }
 
-func NewSafePriorityQueue(capacity int) *SafePriorityQueue {
-	q := make(IntHeap, 0, capacity)
-
-	return &SafePriorityQueue{
-		m:     sync.Mutex{},
-		queue: &q,
-		data:  make(map[int]interface{}, capacity),
+func NewSafePriorityQueue[d any](capacity int) *SafePriorityQueue[d] {
+	_, queue, err := gpq.NewGPQ[d](schema.GPQOptions{
+		NumberOfBuckets:      capacity,
+		DiskCacheEnabled:     false,
+		LazyDiskCacheEnabled: false,
+	})
+	if err != nil {
+		panic(err)
+	}
+	return &SafePriorityQueue[d]{
+		queue: queue,
 	}
 }
 
-func (pq *SafePriorityQueue) Push(v int, d interface{}) {
-	pq.m.Lock()
-
-	heap.Push(pq.queue, v)
-	pq.data[v] = d
-
-	pq.m.Unlock()
+func (pq *SafePriorityQueue[d]) Push(v int64, data d) {
+	pq.queue.EnQueue(data, v, schema.EnQueueOptions{})
 }
 
-func (pq *SafePriorityQueue) Pop() interface{} {
-	pq.m.Lock()
-	defer pq.m.Unlock()
-
-	v := heap.Pop(pq.queue).(int)
-
-	return pq.data[v]
+func (pq *SafePriorityQueue[d]) Pop() d {
+	//  pq.queue.DeQueue()
+	_, data, err := pq.queue.DeQueue()
+	if err != nil {
+		panic(err)
+	}
+	return data
 }
 
-func (pq *SafePriorityQueue) Len() int {
+func (pq *SafePriorityQueue[d]) Len() uint64 {
 	return pq.queue.Len()
 }

@@ -83,10 +83,10 @@ type ParallelExecutor struct {
 	chResults chan struct{}
 
 	// A priority queue that stores the transaction index of results, so we can validate the results in order
-	resultQueue SafeQueue
+	resultQueue SafeQueue[ExecResult]
 
 	// Channel to signal that the result of a transaction could be written to storage
-	specTaskQueue SafeQueue
+	specTaskQueue SafeQueue[ExecVersionView]
 
 	// Multi-version hash map
 	mvh *MVHashMap
@@ -103,16 +103,16 @@ type ParallelExecutor struct {
 
 func NewParallelExecutor(tasks []ExecTask, profile bool, metadata bool, numProcs int) *ParallelExecutor {
 	numTasks := len(tasks)
-	var resultQueue SafeQueue
+	var resultQueue SafeQueue[ExecResult]
 
-	var specTaskQueue SafeQueue
+	var specTaskQueue SafeQueue[ExecVersionView]
 
 	if metadata {
-		resultQueue = NewSafeFIFOQueue(numTasks)
-		specTaskQueue = NewSafeFIFOQueue(numTasks)
+		resultQueue = NewSafeFIFOQueue[ExecResult](numTasks)
+		specTaskQueue = NewSafeFIFOQueue[ExecVersionView](numTasks)
 	} else {
-		resultQueue = NewSafePriorityQueue(numTasks)
-		specTaskQueue = NewSafePriorityQueue(numTasks)
+		resultQueue = NewSafePriorityQueue[ExecResult](numTasks)
+		specTaskQueue = NewSafePriorityQueue[ExecVersionView](numTasks)
 	}
 	scheduler := NewScheduler(tasks)
 	return &ParallelExecutor{
@@ -179,7 +179,7 @@ func (pe *ParallelExecutor) Prepare() error {
 					pe.mvh.FlushMVWriteSet(res.txAllOut)
 				}
 
-				pe.resultQueue.Push(res.ver.TxnIndex, res)
+				pe.resultQueue.Push(int64(res.ver.TxnIndex), res)
 				pe.chResults <- struct{}{}
 
 				if pe.profile {
@@ -196,7 +196,7 @@ func (pe *ParallelExecutor) Prepare() error {
 
 			if procNum < pe.numSpeculativeProcs {
 				for range pe.scheduler.chSpeculativeTasks {
-					doWork(pe.specTaskQueue.Pop().(ExecVersionView))
+					doWork(pe.specTaskQueue.Pop())
 				}
 			} else {
 				for task := range pe.scheduler.chTasks {
@@ -421,7 +421,7 @@ func (pe *ParallelExecutor) Step(res *ExecResult) (result ParallelExecutionResul
 
 			task := ExecVersionView{ver: Version{nextTx, pe.scheduler.txIncarnations[nextTx]}, et: pe.scheduler.tasks[nextTx], mvh: pe.mvh, sender: pe.scheduler.tasks[nextTx].Sender()}
 
-			pe.specTaskQueue.Push(nextTx, task)
+			pe.specTaskQueue.Push(int64(nextTx), task)
 			pe.scheduler.chSpeculativeTasks <- struct{}{}
 		}
 	}
