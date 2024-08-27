@@ -3,6 +3,7 @@ module github.com/Akagi201/blockstm-go
 go 1.23.0
 
 require (
+	github.com/cornelk/hashmap v1.0.8
 	github.com/emirpasic/gods v1.18.1
 	github.com/ethereum/go-ethereum v1.14.8
 	github.com/heimdalr/dag v1.5.0
@@ -10,7 +11,6 @@ require (
 )
 
 require (
-	github.com/cornelk/hashmap v1.0.8 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/holiman/uint256 v1.3.1 // indirect

@@ -4,6 +4,7 @@ import (
 	"container/heap"
 	"sync"
 )
+
 type IntHeap []int
 
 func (h IntHeap) Len() int           { return len(h) }
