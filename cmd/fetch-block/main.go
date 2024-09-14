@@ -14,9 +14,9 @@ import (
 )
 
 type EthRPC struct {
-	Rpc      string
-	Ctx      context.Context
-	client   *ethclient.Client
+	Rpc    string
+	Ctx    context.Context
+	client *ethclient.Client
 }
 
 func NewEthRPC(rpc string) *EthRPC {
