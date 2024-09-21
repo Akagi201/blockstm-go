@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "block-parallel-analysis"
+version = "0.1.0"
+description = ""
+authors = ["Akagi201 <akagi201@gmail.com>"]
+readme = "README.md"
+packages = [{include = "block_parallel_analysis", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+requests = "^2.32.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
