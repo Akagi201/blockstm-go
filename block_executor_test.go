@@ -88,7 +88,7 @@ func TestSerialBlockExecutor(t *testing.T) {
 		t.Fatal(err)
 	}
 	executor := NewSerialBlockExecutor(config, hc)
-	
+
 	_ = key2
 	_ = hc
 	_ = executor

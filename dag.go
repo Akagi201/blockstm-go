@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cornelk/hashmap"
 	"github.com/heimdalr/dag"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -124,7 +125,7 @@ func GetDep(deps TxnInputOutput) map[int]map[int]bool {
 }
 
 // Find the longest execution path in the DAG
-func (d DAG) LongestPath(stats map[int]ExecutionStat) ([]int, uint64) {
+func (d DAG) LongestPath(stats *hashmap.Map[int, ExecutionStat]) ([]int, uint64) {
 	prev := make(map[int]int, len(d.GetVertices()))
 
 	for i := 0; i < len(d.GetVertices()); i++ {
@@ -147,14 +148,16 @@ func (d DAG) LongestPath(stats map[int]ExecutionStat) ([]int, uint64) {
 
 		if len(parents) > 0 {
 			for _, p := range parents {
-				weight := pathWeights[p.(int)] + stats[i].End - stats[i].Start
+				stat, _ := stats.Get(i)
+				weight := pathWeights[p.(int)] + stat.End - stat.Start
 				if weight > pathWeights[i] {
 					pathWeights[i] = weight
 					prev[i] = p.(int)
 				}
 			}
 		} else {
-			pathWeights[i] = stats[i].End - stats[i].Start
+			stat, _ := stats.Get(i)
+			pathWeights[i] = stat.End - stat.Start
 		}
 
 		if pathWeights[i] > maxPathWeight {
@@ -176,13 +179,14 @@ func (d DAG) LongestPath(stats map[int]ExecutionStat) ([]int, uint64) {
 	return path, maxPathWeight
 }
 
-func (d DAG) Report(stats map[int]ExecutionStat, out func(string)) {
+func (d DAG) Report(stats *hashmap.Map[int, ExecutionStat], out func(string)) {
 	longestPath, weight := d.LongestPath(stats)
 
 	serialWeight := uint64(0)
 
 	for i := 0; i < len(d.GetVertices()); i++ {
-		serialWeight += stats[i].End - stats[i].Start
+		stat, _ := stats.Get(i)
+		serialWeight += stat.End - stat.Start
 	}
 
 	makeStrs := func(ints []int) (ret []string) {

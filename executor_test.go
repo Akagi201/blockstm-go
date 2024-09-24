@@ -387,11 +387,11 @@ func composeValidations(checks []PropertyCheck) PropertyCheck {
 func checkNoStatusOverlap(pe *ParallelExecutor) error {
 	seen := make(map[int]string)
 
-	for _, tx := range pe.execTasks.complete {
+	for _, tx := range pe.scheduler.execTasks.complete {
 		seen[tx] = "complete"
 	}
 
-	for _, tx := range pe.execTasks.inProgress {
+	for _, tx := range pe.scheduler.execTasks.inProgress {
 		if v, ok := seen[tx]; ok {
 			return fmt.Errorf("tx %v is in both %v and inProgress", v, tx)
 		}
@@ -399,7 +399,7 @@ func checkNoStatusOverlap(pe *ParallelExecutor) error {
 		seen[tx] = "inProgress"
 	}
 
-	for _, tx := range pe.execTasks.pending {
+	for _, tx := range pe.scheduler.execTasks.pending {
 		if v, ok := seen[tx]; ok {
 			return fmt.Errorf("tx %v is in both %v complete and pending", v, tx)
 		}
@@ -411,9 +411,9 @@ func checkNoStatusOverlap(pe *ParallelExecutor) error {
 }
 
 func checkNoDroppedTx(pe *ParallelExecutor) error {
-	for i := 0; i < len(pe.tasks); i++ {
-		if !pe.execTasks.checkComplete(i) && !pe.execTasks.checkInProgress(i) && !pe.execTasks.checkPending(i) {
-			if !pe.execTasks.isBlocked(i) {
+	for i := 0; i < len(pe.scheduler.tasks); i++ {
+		if !pe.scheduler.execTasks.checkComplete(i) && !pe.scheduler.execTasks.checkInProgress(i) && !pe.scheduler.execTasks.checkPending(i) {
+			if !pe.scheduler.execTasks.isBlocked(i) {
 				return fmt.Errorf("tx %v is not in any status and is not blocked by any other tx", i)
 			}
 		}
@@ -432,7 +432,7 @@ func runParallel(t *testing.T, tasks []ExecTask, validation PropertyCheck, metad
 	result, err := executeParallelWithCheck(tasks, false, validation, metadata, numProcs, nil)
 
 	if result.Deps != nil && profile {
-		result.Deps.Report(*result.Stats, func(str string) { fmt.Println(str) })
+		result.Deps.Report(result.Stats, func(str string) { fmt.Println(str) })
 	}
 
 	assert.NoError(t, err, "error occur during parallel execution")
@@ -846,8 +846,8 @@ func TestDexScenario(t *testing.T) {
 	numNonIO := []int{100, 500}
 
 	postValidation := func(pe *ParallelExecutor) error {
-		if pe.lastSettled == len(pe.tasks) {
-			for i, inputs := range pe.lastTxIO.inputs {
+		if pe.scheduler.lastSettled == len(pe.scheduler.tasks) {
+			for i, inputs := range pe.scheduler.lastTxIO.inputs {
 				for _, input := range inputs {
 					if input.V.TxnIndex != i-1 {
 						return fmt.Errorf("Tx %d should depend on tx %d, but it actually depends on %d", i, i-1, input.V.TxnIndex)
@@ -881,8 +881,8 @@ func TestDexScenarioWithMetadata(t *testing.T) {
 	numNonIO := []int{100, 500}
 
 	postValidation := func(pe *ParallelExecutor) error {
-		if pe.lastSettled == len(pe.tasks) {
-			for i, inputs := range pe.lastTxIO.inputs {
+		if pe.scheduler.lastSettled == len(pe.scheduler.tasks) {
+			for i, inputs := range pe.scheduler.lastTxIO.inputs {
 				for _, input := range inputs {
 					if input.V.TxnIndex != i-1 {
 						return fmt.Errorf("Tx %d should depend on tx %d, but it actually depends on %d", i, i-1, input.V.TxnIndex)
