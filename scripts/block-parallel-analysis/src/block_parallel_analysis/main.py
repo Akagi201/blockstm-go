@@ -54,7 +54,7 @@ def trace_read_set(tx_hash, rpc_url):
     payload = {
         "jsonrpc": "2.0",
         "method": "debug_traceTransaction",
-        "params": [tx_hash, {"tracer": "prestateTracer"}],
+        "params": [tx_hash, {"tracer": "prestateTracer", "diffMode": False}],
         "id": 1,
     }
 
@@ -62,8 +62,15 @@ def trace_read_set(tx_hash, rpc_url):
     data = response.json()
 
     accounts = set(data["result"].keys()) - accounts2ignore
+    storage_set = set()
+    for acc in accounts:
+        if "storage" not in data["result"][acc]:
+            storage_set.add(acc)
+            continue
+        storage_keys = data["result"][acc]["storage"].keys()
+        storage_set.update([acc + key for key in storage_keys])
 
-    return accounts
+    return storage_set
 
 
 def trace_write_set(tx_hash, rpc_url):
@@ -76,10 +83,17 @@ def trace_write_set(tx_hash, rpc_url):
 
     response = requests.post(rpc_url, json=payload)
     data = response.json()
-
     accounts = set(data["result"].keys()) - accounts2ignore
 
-    return accounts
+    storage_set = set()
+    for acc in accounts:
+        if "storage" not in data["result"][acc]:
+            storage_set.add(acc)
+            continue
+        storage_keys = data["result"][acc]["storage"].keys()
+        storage_set.update([acc + key for key in storage_keys])
+
+    return storage_set
 
 
 def main():
