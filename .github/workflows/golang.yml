@@ -1,0 +1,24 @@
+name: Golang lint
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: "stable"
+        check-latest: true
+    - name: Test
+      run: go test ./...
+    - name: Run Revive Action
+      uses: docker://ghcr.io/morphy2k/revive-action:v2
+      with:
+        config: revive.toml

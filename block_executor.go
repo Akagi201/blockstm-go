@@ -432,7 +432,7 @@ func (exec *ParallelBlockExecutor) Process(block *types.Block, statedb *state.St
 	backupStateDB := statedb.Copy()
 
 	profile := false
-	result, err := ExecuteParallel(tasks, profile, metadata, exec.parallelProcesses, nil)
+	result, err := ExecuteParallel(nil, tasks, profile, metadata, exec.parallelProcesses)
 
 	if err == nil && profile && result.Deps != nil {
 		_, weight := result.Deps.LongestPath(result.Stats)
@@ -467,7 +467,7 @@ func (exec *ParallelBlockExecutor) Process(block *types.Block, statedb *state.St
 				t.totalUsedGas = usedGas
 			}
 
-			_, err = ExecuteParallel(tasks, false, metadata, exec.parallelProcesses, nil)
+			_, err = ExecuteParallel(nil, tasks, false, metadata, exec.parallelProcesses)
 
 			break
 		}

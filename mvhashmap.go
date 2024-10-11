@@ -156,11 +156,11 @@ func (mv *MVHashMap) MarkEstimate(k Key, txIdx int) {
 	})
 
 	cells.rw.Lock()
-	if ci, ok := cells.tm.Get(txIdx); !ok {
+	ci, ok := cells.tm.Get(txIdx); 
+	if !ok {
 		panic(fmt.Sprintf("should not happen - cell should be present for path. TxIdx: %v, path, %x, cells keys: %v", txIdx, k, cells.tm.Keys()))
-	} else {
-		ci.(*WriteCell).flag = FlagEstimate
 	}
+	ci.(*WriteCell).flag = FlagEstimate
 	cells.rw.Unlock()
 }
 
@@ -198,13 +198,12 @@ func (res *MVReadResult) Value() interface{} {
 	return res.value
 }
 
-func (mvr MVReadResult) Status() int {
-	if mvr.depIdx != -1 {
-		if mvr.incarnation == -1 {
+func (res MVReadResult) Status() int {
+	if res.depIdx != -1 {
+		if res.incarnation == -1 {
 			return MVReadResultDependency
-		} else {
-			return MVReadResultDone
 		}
+		return MVReadResultDone
 	}
 
 	return MVReadResultNone

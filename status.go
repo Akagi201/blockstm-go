@@ -32,18 +32,17 @@ type taskStatusManager struct {
 func insertInList(l []int, v int) []int {
 	if len(l) == 0 || v > l[len(l)-1] {
 		return append(l, v)
-	} else {
-		x := sort.SearchInts(l, v)
-		if x < len(l) && l[x] == v {
-			// already in list
-			return l
-		}
-
-		a := append(l[:x+1], l[x:]...)
-		a[x] = v
-
-		return a
 	}
+	x := sort.SearchInts(l, v)
+	if x < len(l) && l[x] == v {
+		// already in list
+		return l
+	}
+
+	a := append(l[:x+1], l[x:]...)
+	a[x] = v
+
+	return a
 }
 
 func (m *taskStatusManager) takeNextPending() int {
@@ -67,11 +66,11 @@ func (m taskStatusManager) maxAllComplete() int {
 		return -1
 	} else if m.complete[len(m.complete)-1] == len(m.complete)-1 {
 		return m.complete[len(m.complete)-1]
-	} else {
-		for i := len(m.complete) - 2; i >= 0; i-- {
-			if hasNoGap(m.complete[:i+1]) {
-				return m.complete[i]
-			}
+	}
+
+	for i := len(m.complete) - 2; i >= 0; i-- {
+		if hasNoGap(m.complete[:i+1]) {
+			return m.complete[i]
 		}
 	}
 
@@ -110,9 +109,8 @@ func (m *taskStatusManager) markComplete(tx int) {
 func (m *taskStatusManager) minPending() int {
 	if len(m.pending) == 0 {
 		return -1
-	} else {
-		return m.pending[0]
 	}
+	return m.pending[0]
 }
 
 func (m *taskStatusManager) countComplete() int {
@@ -198,8 +196,8 @@ func (m *taskStatusManager) checkComplete(tx int) bool {
 //
 //	'all complete' limit
 func (m *taskStatusManager) getRevalidationRange(txFrom int) (ret []int) {
-	max := m.maxAllComplete() // haven't learned to trust compilers :)
-	for x := txFrom; x <= max; x++ {
+	maxTask := m.maxAllComplete() // haven't learned to trust compilers :)
+	for x := txFrom; x <= maxTask; x++ {
 		if !m.checkInProgress(x) {
 			ret = append(ret, x)
 		}

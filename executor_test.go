@@ -54,7 +54,7 @@ type Timer func(txIdx int, opIdx int) time.Duration
 
 type Sender func(int) common.Address
 
-func NewTestExecTask(txIdx int, ops []Op, sender common.Address, nonce int) *testExecTask {
+func newTestExecTask(txIdx int, ops []Op, sender common.Address, nonce int) *testExecTask {
 	return &testExecTask{
 		txIdx:        txIdx,
 		ops:          ops,
@@ -66,15 +66,9 @@ func NewTestExecTask(txIdx int, ops []Op, sender common.Address, nonce int) *tes
 	}
 }
 
-func sleep(i time.Duration) {
-	start := time.Now()
-	for time.Since(start) < i {
-	}
-}
-
 func (t *testExecTask) Execute(mvh *MVHashMap, incarnation int) error {
 	// Sleep for 50 microsecond to simulate setup time
-	sleep(time.Microsecond * 50)
+	time.Sleep(time.Microsecond * 50)
 
 	version := Version{TxnIndex: t.txIdx, Incarnation: incarnation}
 
@@ -89,7 +83,7 @@ func (t *testExecTask) Execute(mvh *MVHashMap, incarnation int) error {
 		switch op.opType {
 		case readType:
 			if _, ok := t.writeMap[k]; ok {
-				sleep(op.duration)
+				time.Sleep(op.duration)
 				continue
 			}
 
@@ -115,13 +109,13 @@ func (t *testExecTask) Execute(mvh *MVHashMap, incarnation int) error {
 				readKind = ReadKindStorage
 			}
 
-			sleep(op.duration)
+			time.Sleep(op.duration)
 
 			t.readMap[k] = ReadDescriptor{k, readKind, Version{TxnIndex: result.depIdx, Incarnation: result.incarnation}}
 		case writeType:
 			t.writeMap[k] = WriteDescriptor{k, version, op.val}
 		case otherType:
-			sleep(op.duration)
+			time.Sleep(op.duration)
 		default:
 			panic(fmt.Sprintf("Unknown op type: %d", op.opType))
 		}
@@ -172,32 +166,30 @@ func (t *testExecTask) Dependencies() []int {
 	return t.dependencies
 }
 
-func randTimeGenerator(min time.Duration, max time.Duration) func(txIdx int, opIdx int) time.Duration {
-	return func(txIdx int, opIdx int) time.Duration {
-		return time.Duration(rand.Int63n(int64(max-min))) + min
+func randTimeGenerator(minTime time.Duration, maxTime time.Duration) func(txIdx int, opIdx int) time.Duration {
+	return func(_ int, _ int) time.Duration {
+		return time.Duration(rand.Int63n(int64(maxTime-minTime))) + minTime
 	}
 }
 
-func longTailTimeGenerator(min time.Duration, max time.Duration, i int, j int) func(txIdx int, opIdx int) time.Duration {
+func longTailTimeGenerator(minTime time.Duration, maxTime time.Duration, i int, j int) func(txIdx int, opIdx int) time.Duration {
 	return func(txIdx int, opIdx int) time.Duration {
 		if txIdx%i == 0 && opIdx == j {
-			return max * 100
-		} else {
-			return time.Duration(rand.Int63n(int64(max-min))) + min
+			return maxTime * 100
 		}
+		return time.Duration(rand.Int63n(int64(maxTime-minTime))) + minTime
 	}
 }
 
-var randomPathGenerator = func(sender common.Address, i int, j int, total int) Key {
+var randomPathGenerator = func(_ common.Address, i int, _ int, total int) Key {
 	return NewStateKey(common.BigToAddress((big.NewInt(int64(i % 10)))), common.BigToHash((big.NewInt(int64(total)))))
 }
 
-var dexPathGenerator = func(sender common.Address, i int, j int, total int) Key {
+var dexPathGenerator = func(_ common.Address, _ int, j int, total int) Key {
 	if j == total-1 || j == 2 {
 		return NewSubpathKey(common.BigToAddress(big.NewInt(int64(0))), 1)
-	} else {
-		return NewSubpathKey(common.BigToAddress(big.NewInt(int64(j))), 1)
 	}
+	return NewSubpathKey(common.BigToAddress(big.NewInt(int64(j))), 1)
 }
 
 var readTime = randTimeGenerator(4*time.Microsecond, 12*time.Microsecond)
@@ -261,7 +253,7 @@ func taskFactory(numTask int, sender Sender, readsPerT int, writesPerT int, nonI
 			panic("Last op must be a write")
 		}
 
-		t := NewTestExecTask(i, ops, s, senderNonces[s]-1)
+		t := newTestExecTask(i, ops, s, senderNonces[s]-1)
 		exec = append(exec, t)
 	}
 
@@ -429,7 +421,7 @@ func runParallel(t *testing.T, tasks []ExecTask, validation PropertyCheck, metad
 	profile := false
 
 	start := time.Now()
-	result, err := executeParallelWithCheck(tasks, false, validation, metadata, numProcs, nil)
+	result, err := executeParallelWithCheck(nil, tasks, false, validation, metadata, numProcs)
 
 	if result.Deps != nil && profile {
 		result.Deps.Report(result.Stats, func(str string) { fmt.Println(str) })
@@ -451,7 +443,7 @@ func runParallel(t *testing.T, tasks []ExecTask, validation PropertyCheck, metad
 	}
 
 	for _, v := range finalWriteSet {
-		sleep(v)
+		time.Sleep(v)
 	}
 
 	duration := time.Since(start)
@@ -462,7 +454,7 @@ func runParallel(t *testing.T, tasks []ExecTask, validation PropertyCheck, metad
 func runParallelGetMetadata(t *testing.T, tasks []ExecTask, validation PropertyCheck) map[int]map[int]bool {
 	t.Helper()
 
-	res, err := executeParallelWithCheck(tasks, true, validation, false, numProcs, nil)
+	res, err := executeParallelWithCheck(nil, tasks, true, validation, false, numProcs)
 
 	assert.NoError(t, err, "error occur during parallel execution")
 
@@ -551,7 +543,7 @@ func TestZeroTx(t *testing.T) {
 	checks := composeValidations([]PropertyCheck{checkNoStatusOverlap, checkNoDroppedTx})
 
 	taskRunner := func(numTx int, numRead int, numWrite int, numNonIO int) (time.Duration, time.Duration) {
-		sender := func(i int) common.Address { return common.BigToAddress(big.NewInt(int64(1))) }
+		sender := func(_ int) common.Address { return common.BigToAddress(big.NewInt(int64(1))) }
 		tasks, serialDuration := taskFactory(numTx, sender, numRead, numWrite, numNonIO, randomPathGenerator, readTime, writeTime, nonIOTime)
 
 		return runParallel(t, tasks, checks, false), serialDuration
@@ -707,7 +699,7 @@ func TestRandomTx(t *testing.T) {
 
 	taskRunner := func(numTx int, numRead int, numWrite int, numNonIO int) (time.Duration, time.Duration) {
 		// Randomly assign this tx to one of 10 senders
-		sender := func(i int) common.Address { return common.BigToAddress(big.NewInt(int64(rand.Intn(10)))) }
+		sender := func(_ int) common.Address { return common.BigToAddress(big.NewInt(int64(rand.Intn(10)))) }
 		tasks, serialDuration := taskFactory(numTx, sender, numRead, numWrite, numNonIO, randomPathGenerator, readTime, writeTime, nonIOTime)
 
 		return runParallel(t, tasks, checks, false), serialDuration
@@ -729,7 +721,7 @@ func TestRandomTxWithMetadata(t *testing.T) {
 
 	taskRunner := func(numTx int, numRead int, numWrite int, numNonIO int) (time.Duration, time.Duration, time.Duration) {
 		// Randomly assign this tx to one of 10 senders
-		sender := func(i int) common.Address { return common.BigToAddress(big.NewInt(int64(rand.Intn(10)))) }
+		sender := func(_ int) common.Address { return common.BigToAddress(big.NewInt(int64(rand.Intn(10)))) }
 		tasks, serialDuration := taskFactory(numTx, sender, numRead, numWrite, numNonIO, randomPathGenerator, readTime, writeTime, nonIOTime)
 
 		parallelDuration := runParallel(t, tasks, checks, false)
@@ -947,7 +939,7 @@ func TestBreakFromCircularDependency(t *testing.T) {
 	cancel()
 
 	// This should not hang
-	_, err := ExecuteParallel(tasks, false, true, numProcs, ctx)
+	_, err := ExecuteParallel(ctx, tasks, false, true, numProcs)
 
 	if err == nil {
 		t.Error("Expected cancel error")
@@ -980,7 +972,7 @@ func TestBreakFromPartialCircularDependency(t *testing.T) {
 	cancel()
 
 	// This should not hang
-	_, err := ExecuteParallel(tasks, false, true, numProcs, ctx)
+	_, err := ExecuteParallel(ctx, tasks, false, true, numProcs)
 
 	if err == nil {
 		t.Error("Expected cancel error")

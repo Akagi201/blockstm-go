@@ -4,7 +4,7 @@ import "context"
 
 type PropertyCheck func(*ParallelExecutor) error
 
-func executeParallelWithCheck(tasks []ExecTask, profile bool, check PropertyCheck, metadata bool, numProcs int, interruptCtx context.Context) (result ParallelExecutionResult, err error) {
+func executeParallelWithCheck(interruptCtx context.Context, tasks []ExecTask, profile bool, check PropertyCheck, metadata bool, numProcs int) (result ParallelExecutionResult, err error) {
 	if len(tasks) == 0 {
 		return ParallelExecutionResult{MakeTxnInputOutput(len(tasks)), nil, nil, nil}, nil
 	}
@@ -43,6 +43,6 @@ func executeParallelWithCheck(tasks []ExecTask, profile bool, check PropertyChec
 	return
 }
 
-func ExecuteParallel(tasks []ExecTask, profile bool, metadata bool, numProcs int, interruptCtx context.Context) (result ParallelExecutionResult, err error) {
-	return executeParallelWithCheck(tasks, profile, nil, metadata, numProcs, interruptCtx)
+func ExecuteParallel(interruptCtx context.Context, tasks []ExecTask, profile bool, metadata bool, numProcs int) (result ParallelExecutionResult, err error) {
+	return executeParallelWithCheck(interruptCtx, tasks, profile, nil, metadata, numProcs)
 }

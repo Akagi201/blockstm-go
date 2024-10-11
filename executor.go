@@ -56,9 +56,8 @@ type ErrExecAbortError struct {
 func (e ErrExecAbortError) Error() string {
 	if e.Dependency >= 0 {
 		return fmt.Sprintf("Execution aborted due to dependency %d", e.Dependency)
-	} else {
-		return "Execution aborted"
 	}
+	return "Execution aborted"
 }
 
 type ExecutionStat struct {
@@ -179,7 +178,7 @@ func (pe *ParallelExecutor) Prepare() error {
 					pe.mvh.FlushMVWriteSet(res.txAllOut)
 				}
 
-				pe.resultQueue.Push(int64(res.ver.TxnIndex), res)
+				pe.resultQueue.Push(res.ver.TxnIndex, res)
 				pe.chResults <- struct{}{}
 
 				if pe.profile {
@@ -421,7 +420,7 @@ func (pe *ParallelExecutor) Step(res *ExecResult) (result ParallelExecutionResul
 
 			task := ExecVersionView{ver: Version{nextTx, pe.scheduler.txIncarnations[nextTx]}, et: pe.scheduler.tasks[nextTx], mvh: pe.mvh, sender: pe.scheduler.tasks[nextTx].Sender()}
 
-			pe.specTaskQueue.Push(int64(nextTx), task)
+			pe.specTaskQueue.Push(nextTx, task)
 			pe.scheduler.chSpeculativeTasks <- struct{}{}
 		}
 	}
