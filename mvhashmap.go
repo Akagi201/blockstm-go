@@ -156,7 +156,7 @@ func (mv *MVHashMap) MarkEstimate(k Key, txIdx int) {
 	})
 
 	cells.rw.Lock()
-	ci, ok := cells.tm.Get(txIdx); 
+	ci, ok := cells.tm.Get(txIdx)
 	if !ok {
 		panic(fmt.Sprintf("should not happen - cell should be present for path. TxIdx: %v, path, %x, cells keys: %v", txIdx, k, cells.tm.Keys()))
 	}
