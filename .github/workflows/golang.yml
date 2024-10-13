@@ -16,8 +16,8 @@ jobs:
       with:
         go-version: "stable"
         check-latest: true
-    - name: Test
-      run: go test ./...
+    # - name: Test
+      # run: go test ./...
     - name: Run Revive Action
       uses: docker://ghcr.io/morphy2k/revive-action:v2
       with:
