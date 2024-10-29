@@ -52,10 +52,10 @@ func (exec *StatelessExecutor) Process(parallel bool) (common.Hash, common.Hash,
 	}
 	var processor core.Processor
 	if parallel {
-		processor = core.NewStateProcessor(exec.config, chain)
-	} else {
 		parallel := runtime.NumCPU()
 		processor = NewParallelStateProcessor(exec.config, chain, parallel)
+	} else {
+		processor = core.NewStateProcessor(exec.config, chain)
 	}
 	validator := core.NewBlockValidator(exec.config, nil) // No chain, we only validate the state, not the block
 

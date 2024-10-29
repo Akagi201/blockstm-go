@@ -295,6 +295,9 @@ type ParallelStateProcessor struct {
 
 // NewParallelBlockExecutor creates a new ParallelBlockExecutor.
 func NewParallelStateProcessor(config *params.ChainConfig, chain *core.HeaderChain, parallelProcesses int) *ParallelStateProcessor {
+	if parallelProcesses <= 0 {
+		parallelProcesses = 4
+	}
 	return &ParallelStateProcessor{
 		config:            config,
 		chain:             chain,
