@@ -306,7 +306,7 @@ func NewParallelStateProcessor(config *params.ChainConfig, chain *core.HeaderCha
 }
 
 // Process executes a block serially.
-func (exec *ParallelStateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg vm.Config) (types.Receipts, []*types.Log, uint64, error) {
+func (exec *ParallelStateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg vm.Config) (*core.ProcessResult, error) {
 	var (
 		receipts    types.Receipts
 		header      = block.Header()
@@ -335,7 +335,7 @@ func (exec *ParallelStateProcessor) Process(block *types.Block, statedb *state.S
 		msg, err := core.TransactionToMessage(tx, types.MakeSigner(exec.config, header.Number, header.Time), header.BaseFee)
 		if err != nil {
 			log.Error("error creating message", "err", err)
-			return nil, nil, 0, fmt.Errorf("could not apply tx %d [%v]: %w", i, tx.Hash().Hex(), err)
+			return nil, fmt.Errorf("could not apply tx %d [%v]: %w", i, tx.Hash().Hex(), err)
 		}
 
 		statedb := statedb.Copy()
@@ -413,11 +413,20 @@ func (exec *ParallelStateProcessor) Process(block *types.Block, statedb *state.S
 	}
 
 	if err != nil {
-		return nil, nil, 0, err
+		return nil, err
+	}
+
+	// Read requests if Prague is enabled.
+	var requests types.Requests
+	if exec.config.IsPrague(block.Number(), block.Time()) {
+		requests, err = core.ParseDepositLogs(allLogs, exec.config)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Finalize the block, applying any consensus engine specific extras (e.g. block rewards)
 	exec.chain.Engine().Finalize(exec.chain, header, statedb, block.Body())
 
-	return receipts, allLogs, *usedGas, nil
+	return &core.ProcessResult{Receipts: receipts, Requests: requests, Logs: allLogs, GasUsed: *usedGas}, nil
 }

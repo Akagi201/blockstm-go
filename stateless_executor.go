@@ -42,7 +42,7 @@ func (exec *StatelessExecutor) Process(parallel bool) (common.Hash, common.Hash,
 	}
 	// Create and populate the state database to serve as the stateless backend
 	memdb := exec.witness.MakeHashDB()
-	db, err := state.New(exec.witness.Root(), state.NewDatabaseWithConfig(memdb, triedb.HashDefaults), nil)
+	db, err := state.New(exec.witness.Root(), state.NewDatabase(triedb.NewDatabase(memdb, triedb.HashDefaults), nil))
 	if err != nil {
 		return common.Hash{}, common.Hash{}, err
 	}
@@ -60,16 +60,16 @@ func (exec *StatelessExecutor) Process(parallel bool) (common.Hash, common.Hash,
 	validator := core.NewBlockValidator(exec.config, nil) // No chain, we only validate the state, not the block
 
 	// Run the stateless blocks processing and self-validate certain fields
-	receipts, _, usedGas, err := processor.Process(exec.witness.Block, db, vm.Config{})
+	res, err := processor.Process(exec.block, db, vm.Config{})
 	if err != nil {
 		return common.Hash{}, common.Hash{}, err
 	}
-	if err = validator.ValidateState(exec.witness.Block, db, receipts, usedGas, true); err != nil {
+	if err = validator.ValidateState(exec.block, db, res, true); err != nil {
 		return common.Hash{}, common.Hash{}, err
 	}
 	// Almost everything validated, but receipt and state root needs to be returned
-	receiptRoot := types.DeriveSha(receipts, trie.NewStackTrie(nil))
-	stateRoot := db.IntermediateRoot(exec.config.IsEIP158(exec.witness.Block.Number()))
+	receiptRoot := types.DeriveSha(res.Receipts, trie.NewStackTrie(nil))
+	stateRoot := db.IntermediateRoot(exec.config.IsEIP158(exec.block.Number()))
 
 	return receiptRoot, stateRoot, nil
 }
