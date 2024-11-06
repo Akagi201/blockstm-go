@@ -138,7 +138,7 @@ func generateMergeChain(n int, merged bool) (*core.Genesis, []*types.Block) {
 		Difficulty: big.NewInt(0),
 	}
 	testNonce := uint64(0)
-	generate := func(i int, g *core.BlockGen) {
+	generate := func(_ int, g *core.BlockGen) {
 		g.OffsetTime(5)
 		g.SetExtra([]byte("test"))
 		tx, _ := types.SignTx(types.NewTransaction(testNonce, common.HexToAddress("0x9a9070028361F7AAbeB3f2F2Dc07F82C4a98A02a"), big.NewInt(1), params.TxGas, big.NewInt(params.InitialBaseFee*2), nil), types.LatestSigner(&config), testKey)
