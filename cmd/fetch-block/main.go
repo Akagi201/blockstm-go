@@ -11,7 +11,8 @@ func fetchOptimismBlocks() {
 	// get from env OP_MAINNET_RPC
 	rpcURL := os.Getenv("OP_MAINNET_RPC")
 	if rpcURL == "" {
-		panic("OP_MAINNET_RPC env var is not set")
+		fmt.Fprintln(os.Stderr, "Error: OP_MAINNET_RPC environment variable is not set")
+		os.Exit(1)
 	}
 
 	// https://docs.optimism.io/builders/node-operators/network-upgrades
@@ -38,7 +39,8 @@ func fetchOptimismBlocks() {
 
 		err = rpcClient.ExecutionWitness(context.Background(), &bigInt)
 		if err != nil {
-			panic(err)
+			fmt.Fprintf(os.Stderr, "Failed to fetch execution witness for block %d: %v\n", blockNumber, err)
+			continue
 		}
 		fmt.Printf("Written witness data, block number: %d\n", blockNumber)
 	}
